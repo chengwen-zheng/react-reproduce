@@ -31,7 +31,7 @@ function ReactFake() {
 
     function createInstance(fiber) {
         const instance = new fiber.type(fiber.props);
-        instance._fiber = fiber;
+        instance.__fiber = fiber;
         return instance;
     }
 
@@ -133,11 +133,12 @@ function ReactFake() {
     // 并保持nextUnitOfWork不做改变，下次会继续执行这个任务。
     // performWork()中剩下的代码还会检查是否还有等待完成的任务，如果有，则会在浏览器空闲的时候再次调用自己。
     function workLoop() {
-        // nextUnitOfWork指向的是下一次我们要运行的fiber。
+        // nextUnitOfWork指向的是下一次我们要运行的fiber,重新构建树
         if (!nextUnitOfWork) {
             resetNextUnitOfWork();
         }
 
+        // DFC构建Fiber树。
         while (nextUnitOfWork) {
             nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
         }
@@ -161,7 +162,7 @@ function ReactFake() {
             if (uow.sibling) {
                 return uow.sibling;
             }
-            uow = uow.sibling;
+            uow = uow.parent;
         }
     }
 
@@ -175,10 +176,10 @@ function ReactFake() {
         // 将更新操作中携带的state复制给对应fiber
         // 通过setState()更新才会有partialState
         if (update.partialState) {
-            update.instance._fiber.partialState = update.partialState;
+            update.instance.__fiber.partialState = update.partialState;
         }
 
-        const root = update.from == HOST_ROOT ? update.dom._rootContainerFiber : getRoot(update.instance._fiber);
+        const root = update.from == HOST_ROOT ? update.dom._rootContainerFiber : getRoot(update.instance.__fiber);
 
         // 注意看，这时候fiber都是没有child属性，返回的是根节点的fiber。
         // 就是old tree的根节点
@@ -226,7 +227,7 @@ function ReactFake() {
                     type: oldFiber.type,
                     tag: oldFiber.tag,
                     stateNode: oldFiber.stateNode,
-                    props: element.type,
+                    props: element.props,
                     parent: wipFiber,
                     alternate: oldFiber,
                     partialState: oldFiber.partialState,
@@ -264,7 +265,7 @@ function ReactFake() {
         }
     }
 
-    function cloneChildFibers() {
+    function cloneChildFibers(parentFiber) {
         const oldFiber = parentFiber.alternate;
         if (!oldFiber.child) {
             return
@@ -297,7 +298,7 @@ function ReactFake() {
 
     function completeWork(fiber) {
         if (fiber.tag === CLASS_COMPONENT) {
-            fiber.stateNode._fiber = fiber;
+            fiber.stateNode.__fiber = fiber;
         }
 
         // 每次更新都要重新构建一整颗fiber树;
@@ -313,7 +314,7 @@ function ReactFake() {
 
     // commitAllWork 构建一个effcts列表.
     // 通过这样的effects列表，根fiber的efffects会包含所有带有effectTag的fiber。
-    function commitAllWork() {
+    function commitAllWork(fiber) {
         fiber.effects.forEach(f => commitWork(f));
         // 根fiber节点对应的DOM节点有个__rootContainerFiber属性引用着根fiber
         fiber.stateNode._rootContainerFiber = fiber;
@@ -321,16 +322,17 @@ function ReactFake() {
         pendingCommit = null;
     }
 
-    function commitWork() {
+    function commitWork(fiber) {
         if (fiber.tag === HOST_ROOT) {
             return;
         }
 
         let domParentFiber = fiber.parent;
         // 寻找一个dom类型的祖先fiber(stateNode属性对应为原生DOM)
-        while (domParentFiber == CLASS_COMPONENT) {
+        while (domParentFiber.tag == CLASS_COMPONENT) {
             domParentFiber = domParentFiber.parent;
         }
+        const domParent = domParentFiber.stateNode;
         // 有了DOM才好去调用DOM的那些方法去操作DOM
         if (fiber.effectTag === PLACEMENT && fiber.tag == HOST_COMPONENT) {
             domParent.appendChild(fiber.stateNode);
