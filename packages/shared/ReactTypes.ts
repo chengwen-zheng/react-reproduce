@@ -1,5 +1,6 @@
 export type Type = any;
 export type Key = any;
+// todo: remove the null
 export type Ref = { current: any } | ((instance: any) => void) | null;
 export type Props = any;
 export type ElementType = any;
