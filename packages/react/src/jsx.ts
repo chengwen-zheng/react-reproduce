@@ -63,14 +63,10 @@ export const createElement = (
 	return ReactElement(type, key, ref, props);
 };
 
-export const jsx = (type: ElementType, config: any, maybeKey: any) => {
+export const jsx = (type: ElementType, config: any) => {
 	let key: Key = null;
 	const props: Props = {};
-	let ref: Ref | null = null;
-
-	if (maybeKey !== undefined) {
-		key = '' + maybeKey;
-	}
+	let ref: Ref = null;
 
 	for (const prop in config) {
 		const val = config[prop];
