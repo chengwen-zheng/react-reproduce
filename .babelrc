@@ -1,9 +1,0 @@
-{
-    "plugins": [
-      [
-        "@babel/plugin-transform-react-jsx",{
-          "pragma": "ReactFake.createElement" // default pragma is React.createElement
-        }
-      ]
-    ]
-  }
